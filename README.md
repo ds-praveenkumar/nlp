@@ -1,4 +1,5 @@
 [![Python application](https://github.com/ds-praveenkumar/nlp/actions/workflows/nlp-app.yml/badge.svg)](https://github.com/ds-praveenkumar/nlp/actions/workflows/nlp-app.yml)
+[![Docker Image CI](https://github.com/ds-praveenkumar/nlp/actions/workflows/docker-image.yml/badge.svg)](https://github.com/ds-praveenkumar/nlp/actions/workflows/docker-image.yml)
 ---
 # nlp 
 This repo contains code implementing deeplearning appraoch for text generation
