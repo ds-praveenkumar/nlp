@@ -3,12 +3,12 @@
 from pathlib import Path
 
 class Config:
-    """ folder constants """"
+    """ folder constants """
     #paths
     root = Path.cwd().resolve()
     data = Path(root) / "data"
     notebook = Path( root) / "notebook"
     model = Path( root ) / "model"
 
-    
+
 
