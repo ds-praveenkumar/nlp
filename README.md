@@ -1,3 +1,5 @@
+[![Python application](https://github.com/ds-praveenkumar/nlp/actions/workflows/nlp-app.yml/badge.svg)](https://github.com/ds-praveenkumar/nlp/actions/workflows/nlp-app.yml)
+---
 # nlp 
 This repo contains code implementing deeplearning appraoch for text generation
 
