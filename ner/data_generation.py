@@ -19,21 +19,21 @@ class DataGenerator:
         adhaar_id = self.fake.ssn()
         return adhaar_id
     
-    def address( self ) -> int:
-        salary = self.fake.address()
-        return salary
+    def company( self ) -> int:
+        company = self.fake.company()
+        return company
     
     def generate( self ) -> Person:
         name = self.generate_name()
         ssn = self.ssn()
-        address = self.address()
+        address = self.company()
         person = Person( name=name, ssn=ssn, address=address)
         return person
 
 if __name__ == '__main__':
     dg = DataGenerator()
     filename = 'data.txt'
-    sample_size = 10
+    sample_size = 2500
     with open(filename, 'w') as f:
         for i in range( sample_size):
             out = dg.generate()

@@ -1,4 +1,8 @@
-torch==1.6.0
+torch
 numpy
 pandas
 pathlib
+seqeval
+datasets
+transformers
+tqdm
