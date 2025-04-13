@@ -12,3 +12,9 @@ This repo contains code implementing deeplearning appraoch for text generation
 1. [SQuAD](https://rajpurkar.github.io/SQuAD-explorer/)
 2. [useful links](https://blog.cambridgespark.com/50-free-machine-learning-datasets-natural-language-processing-d88fb9c5c8da)
 
+
+
+### NER
+what are the approaches for identifying sentence parts classification: 
+example 
+test app 1 : <app name>test app</test app> <value> 1 </value>
