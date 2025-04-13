@@ -37,4 +37,5 @@ if __name__ == '__main__':
     with open(filename, 'w') as f:
         for i in range( sample_size):
             out = dg.generate()
-            print(out)
+            print(f'{out.name}[sep]{out.ssn}[sep]{out.address}\n')
+            f.write(f'{out.name}[sep]{out.ssn}[sep]{out.address}\n' )
