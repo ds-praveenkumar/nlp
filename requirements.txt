@@ -6,3 +6,4 @@ seqeval
 datasets
 transformers
 tqdm
+nltk
