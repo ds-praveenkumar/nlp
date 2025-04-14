@@ -5,12 +5,15 @@ nltk.download('stopwords')
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 nltk.download('wordnet')
+import re
 
 corpus = [
     "I am a good boy",
     "This is a bad day",
     "The cat sat on the mat",
-    'you are a good boy'
+    'you are a good boy',
+    "my email id is dfdfld@gmail.com"
+    'visit http:\www.google.com'
 ]
 tokenized = []
 
@@ -42,4 +45,7 @@ feat_df = pd.DataFrame( features, columns=tfidf.get_feature_names_out())
 print( feat_df )
 
 
-
+## clean email
+for text in corpus:
+    print(re.sub(r'\w+@\w+.com', '', text))
+    print( re.sub( r'http\S+|www.\S+', '', text ) )
