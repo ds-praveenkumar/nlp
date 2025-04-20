@@ -13,8 +13,9 @@ This repo contains code implementing deeplearning appraoch for text generation
 2. [useful links](https://blog.cambridgespark.com/50-free-machine-learning-datasets-natural-language-processing-d88fb9c5c8da)
 
 
+### Topics 
+1. Embedding based similarity search
+2. Named Entity Recognition (NER)
+3. Train embedding model
 
 ### NER
-what are the approaches for identifying sentence parts classification: 
-example 
-test app 1 : <app name>test app</test app> <value> 1 </value>
