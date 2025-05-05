@@ -12,29 +12,40 @@ class PrepareTrainingdata:
         all_tags = []
         read_data =  self.load_data()
         for line in read_data:
-            split_text = line.split('[sep]')
-            print(split_text)
-            
-            tags = []
-            name_list = split_text[0]
-            ssn_list = split_text[1]
-            company_list = split_text[2]
-            
-            if len(name_list.split()) >= 1:
-                tags.append('B-NAME')
-                for i in name_list.split()[1:]:
-                    tags.append('I-NAME')
-            if len(ssn_list.split()) == 1:
-                tags.append('B-SSN')
-            if len(company_list.split()) >= 1:
-                tags.append('B-COMPANY')
-                for i in company_list.split()[1:]:
-                    tags.append('I-COMPANY')
-            all_tags.append( tags )
+            split_text = line.split('[SEP]')
+            labels = []
+            if len(split_text) == 3:
+                
+                name = str(split_text[0])
+                ssn = str(split_text[1])
+                address = str(split_text[2])
+                # tag name
+                if len(name.split()) >  1:
+                    labels.append('B-NAME')
+                    for i in name.split()[1:]:
+                        labels.append('I-NAME')
+                else:
+                    labels.append('B-NAME')
+                
+                if len(ssn.split()) >  1:
+                    labels.append('B-SSN')
+                    for i in ssn.split()[1:]:
+                        labels.append('I-SSN')
+                else:
+                    labels.append('B-SSN')
+                
+                if len(address.split()) >  1:
+                    labels.append('B-COMPANY')
+                    address_tag  = ' '.join(['I-COMPANY' for i in range(len(address.split()) -1 )])
+                    labels.append(address_tag)
+                else:
+                    labels.append('B-COMPANY')
+                print(labels)
+            all_tags.append(labels)
 
         with open('tagged.txt', 'w') as f:
             for tags in all_tags:
-                tag_seq = ' '.join(tags) 
+                tag_seq = ' '.join(tags)
                 f.write(tag_seq+'\n')
 
     def save_training_data( self ):
@@ -46,8 +57,8 @@ class PrepareTrainingdata:
         with open('labelled.csv', 'w') as  w:
             w.write(f'text,label\n') 
             for line in zip(raw_data, labelled_data):    
-                raw_line = line[0].replace('[sep]', ' ').replace(',', '')
-                labelled_line = line[1]
+                raw_line = line[0].replace('[SEP]', ' ').replace(',', '')
+                labelled_line = line[1].replace('B-SSN','[SEP]B-SSN[SEP]')
                 w.write(f'{raw_line}, {labelled_line}') 
     
 if __name__ == '__main__':

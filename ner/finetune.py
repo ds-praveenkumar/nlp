@@ -11,6 +11,8 @@ class FinetuneNer:
         self.model_checkpoint = "bert-base-cased"
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_checkpoint)
         self.label_list = ['B-NAME', 'I-NAME', 'B-SSN', 'B-COMPANY' ,'I-COMPANY']
+        self.label2id = {l: i for i, l in enumerate(self.label_list)}
+        self.id2label = {i: l for l, i in self.label2id.items()}
         self.model = AutoModelForTokenClassification.from_pretrained(
                     self.model_checkpoint, num_labels=len(self.label_list)
                 )
@@ -20,11 +22,11 @@ class FinetuneNer:
         
         df = pd.read_csv( self.train_path )
         ds = Dataset.from_pandas(df)
-        ds['train'], ds['validation'] = ds.train_test_split(.1).values()
+        ds = ds.train_test_split(.1)
         return ds
     
     def tokenize_and_align_labels(self, example):
-        tokenized_inputs = self.tokenizer(example["tokens"], truncation=True, is_split_into_words=True)
+        tokenized_inputs = self.tokenizer(example["text"], truncation=True, is_split_into_words=True)
         labels = []
         word_ids = tokenized_inputs.word_ids()
         previous_word_idx = None
