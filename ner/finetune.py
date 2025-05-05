@@ -4,7 +4,7 @@ from transformers import TrainingArguments, Trainer
 import numpy as np
 from seqeval.metrics import classification_report, f1_score
 import pandas as pd
-from typing import List, Union
+from typing import List, Union, Tuple
 
 class FinetuneNer:
     def __init__(self):
@@ -109,7 +109,7 @@ class FinetuneNer:
             per_device_eval_batch_size=8,
             num_train_epochs=5,
             weight_decay=0.01,
-            save_total_limit=2
+            save_total_limit=1
         )
         data_collator = DataCollatorForTokenClassification(self.tokenizer)
         trainer = Trainer(
@@ -123,6 +123,34 @@ class FinetuneNer:
         )
         trainer.train()
         trainer.evaluate()
+        
+    def infer(self, text: str) -> List[Tuple[str, str]]:
+   
+        tokens = self._mark_whitespace(text)
+        encoding = self.tokenizer(tokens,
+                                  is_split_into_words=True,
+                                  return_tensors='pt')
+        outputs = self.model(**encoding)
+        preds = np.argmax(outputs.logits.detach().numpy(), axis=2)[0]
+        word_ids = encoding.word_ids(batch_index=0)
+
+        results = []
+        prev_word_idx = None
+        for idx, word_idx in enumerate(word_ids):
+            if word_idx is None or word_idx == prev_word_idx:
+                prev_word_idx = word_idx
+                continue
+            token = tokens[idx]
+            label = self.id2label[preds[idx]]
+            # Convert placeholder back to whitespace char
+            if token == '<SPACE>': token = ' '
+            if token == '<TAB>': token = '\t'
+            results.append((token, label))
+            prev_word_idx = word_idx
+        return results
 
 if __name__ == '__main__':
-    FinetuneNer().train()
+    ft = FinetuneNer()
+    ft.train()
+    sample = "Abigail Hooper 860-04-5019 Bond-Moore"
+    print("Inference:", ft.infer(sample))
