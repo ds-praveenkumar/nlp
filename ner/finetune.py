@@ -1,99 +1,128 @@
-from datasets import load_dataset, ClassLabel, DatasetDict, Dataset
+from datasets import Dataset
 from transformers import AutoTokenizer, AutoModelForTokenClassification, DataCollatorForTokenClassification
 from transformers import TrainingArguments, Trainer
 import numpy as np
 from seqeval.metrics import classification_report, f1_score
 import pandas as pd
+from typing import List, Union
 
 class FinetuneNer:
-    def __init__( self ):
+    def __init__(self):
         self.train_path = 'labelled.csv'
         self.model_checkpoint = "bert-base-cased"
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_checkpoint)
-        self.label_list = ['B-NAME', 'I-NAME', 'B-SSN', 'B-COMPANY' ,'I-COMPANY']
+
+        # Add placeholders for whitespace
+        self.whitespace_tokens = ["<SPACE>", "<TAB>"]
+        self.tokenizer.add_special_tokens({'additional_special_tokens': self.whitespace_tokens})
+
+        # Label mapping (include 'O' for whitespace tokens)
+        self.label_list = ['B-NAME', 'I-NAME', 'B-SSN', 'B-COMPANY', 'I-COMPANY', 'O']
         self.label2id = {l: i for i, l in enumerate(self.label_list)}
         self.id2label = {i: l for l, i in self.label2id.items()}
+
+        # Load model and resize embeddings
         self.model = AutoModelForTokenClassification.from_pretrained(
-                    self.model_checkpoint, num_labels=len(self.label_list)
-                )
+            self.model_checkpoint,
+            num_labels=len(self.label_list)
+        )
+        self.model.resize_token_embeddings(len(self.tokenizer))
+
         self.outputdir = "./ner-bert"
 
-    def prepare_dataset( self ):
-        
-        df = pd.read_csv( self.train_path )
-        ds = Dataset.from_pandas(df)
-        ds = ds.train_test_split(.1)
-        return ds
-    
-    def tokenize_and_align_labels(self, example):
-        tokenized_inputs = self.tokenizer(example["text"], truncation=True, is_split_into_words=True)
-        labels = []
-        word_ids = tokenized_inputs.word_ids()
-        previous_word_idx = None
+    def _mark_whitespace(self, text: Union[str, List[str], None]) -> List[str]:
+        if text is None:
+            return []
+        marked = text.replace("\t", " <TAB> ")
+        marked = marked.replace(" ", " <SPACE> ")
+        return marked.split()
 
-        for word_idx in word_ids:
-            if word_idx is None:
-                labels.append(-100)
-            elif word_idx != previous_word_idx:
-                labels.append(self.label_list.index(example["ner_tags"][word_idx]))
-            else:
-                labels.append(self.label_list.index(example["ner_tags"][word_idx]) if True else -100)
-            previous_word_idx = word_idx
-        tokenized_inputs["labels"] = labels
-        return tokenized_inputs
-    
-    def compute_metrics( self, p):
-        predictions, labels = p
-        predictions = np.argmax(predictions, axis=2)
+    def prepare_dataset(self) -> dict:
+        df = pd.read_csv(self.train_path)
+        print(df.head(0))
+        ds = Dataset.from_pandas(df, preserve_index=False)
+        return ds.train_test_split(test_size=0.1)
 
-        true_predictions = [
-            [self.label_list[p] for (p, l) in zip(prediction, label) if l != -100]
-            for prediction, label in zip(predictions, labels)
-        ]
-        true_labels = [
-            [self.label_list[l] for (p, l) in zip(prediction, label) if l != -100]
-            for prediction, label in zip(predictions, labels)
-        ]
+    def tokenize_and_align_labels(self, examples: dict) -> dict:
+        texts = examples.get('text', [])
+        labels = examples.get('label', [])
+        token_lists = [self._mark_whitespace(t) for t in texts]
+
+        tokenized = self.tokenizer(
+            token_lists,
+            is_split_into_words=True,
+            truncation=True,
+            padding=False
+        )
+
+        labels_batch = []
+        for i, encoding in enumerate(tokenized.encodings):
+            word_ids = encoding.word_ids
+            prev_idx = None
+            ex_labels = []
+            # Safely handle label sequence
+            tag_seq = labels[i] if i < len(labels) and isinstance(labels[i], list) else []
+            for word_idx in word_ids:
+                if word_idx is None:
+                    ex_labels.append(-100)
+                elif word_idx != prev_idx:
+                    tag = tag_seq[word_idx] if word_idx < len(tag_seq) else 'O'
+                    ex_labels.append(self.label2id.get(tag, self.label2id['O']))
+                else:
+                    ex_labels.append(-100)
+                prev_idx = word_idx
+            labels_batch.append(ex_labels)
+
+        tokenized['labels'] = labels_batch
+        return tokenized
+
+    def compute_metrics(self, preds_and_labels: tuple) -> dict:
+        predictions, labels = preds_and_labels
+        preds = np.argmax(predictions, axis=2)
+        true_preds, true_labels = [], []
+        for pred_seq, label_seq in zip(preds, labels):
+            p_seq, l_seq = [], []
+            for p, l in zip(pred_seq, label_seq):
+                if l != -100:
+                    p_seq.append(self.label_list[p])
+                    l_seq.append(self.label_list[l])
+            true_preds.append(p_seq)
+            true_labels.append(l_seq)
         return {
-            "f1": f1_score(true_labels, true_predictions),
-            "report": classification_report(true_labels, true_predictions)
+            'f1': f1_score(true_labels, true_preds),
+            'report': classification_report(true_labels, true_preds)
         }
-    
+
     def train(self):
-        # Define training arguments
         dataset = self.prepare_dataset()
-        encoded_dataset = dataset.map(self.tokenize_and_align_labels, batched=True)
+        encoded = dataset.map(
+            self.tokenize_and_align_labels,
+            batched=True,
+            remove_columns=['text', 'label']
+        )
+        print(encoded['train'][0])
         training_args = TrainingArguments(
             output_dir=self.outputdir,
-            evaluation_strategy="epoch",
+            # evaluation_strategy="epoch",
             learning_rate=2e-5,
             per_device_train_batch_size=8,
             per_device_eval_batch_size=8,
             num_train_epochs=5,
             weight_decay=0.01,
-            save_total_limit=2,
+            save_total_limit=2
         )
-
-        # Data collator for dynamic padding
         data_collator = DataCollatorForTokenClassification(self.tokenizer)
-
-        # Create trainer
         trainer = Trainer(
             model=self.model,
             args=training_args,
-            train_dataset=encoded_dataset["train"],
-            eval_dataset=encoded_dataset["validation"],
+            train_dataset=encoded['train'],
+            eval_dataset=encoded['test'],
             tokenizer=self.tokenizer,
             data_collator=data_collator,
-            compute_metrics=self.compute_metrics,
+            compute_metrics=self.compute_metrics
         )
-
-        # Train
         trainer.train()
-
-        # Evaluate
         trainer.evaluate()
 
 if __name__ == '__main__':
-    ft = FinetuneNer()
-    ft.train()
+    FinetuneNer().train()
